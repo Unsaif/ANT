@@ -42,11 +42,11 @@ PATH directories can be located by executing command:
 
 To run the ANT, execute command:
 
-`ANTDIR/ant`
+`ANTDIR/ant -a path/to/absent_present_species.tsv`
 
 If running from within the pipeline directory:
 
-`./ant`
+`./ant -a path/to/absent_present_species.tsv`
 
 # OUTPUT
 

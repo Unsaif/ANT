@@ -8,6 +8,8 @@ from selenium.webdriver.support import expected_conditions as EC
 import re
 import pandas as pd
 import argparse
+import sys
+import os
 
 def find_agora_name(path_to_agora, path_to_absent_present):
     
@@ -118,4 +120,9 @@ parser.add_argument('-a', type=str, required=True)
 
 args = parser.parse_args()
 
-find_agora_name('AGORA2_infoFile.xlsx', args.a)
+path = os.path.dirname(sys.argv[0])
+
+if path != "./ant":
+    find_agora_name(path + '/AGORA2_infoFile.xlsx', args.a)
+else:
+    find_agora_name('AGORA2_infoFile.xlsx', args.a)

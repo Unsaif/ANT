@@ -1,0 +1,121 @@
+#!/usr/bin/env python
+
+from selenium import webdriver 
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import re
+import pandas as pd
+import argparse
+
+def find_agora_name(path_to_agora, path_to_absent_present):
+    
+    agora2 = pd.read_excel(path_to_agora, sheet_name = 'AGORA2_Reconstructions_Informat') 
+    agora2 = agora2["Species"]
+    agora2 = list(agora2)
+    
+    df = pd.read_csv(path_to_absent_present, header = 0, sep = "\t")
+    names = df[df[r"absent/present/renamed"] == "AA_absent"]["QIIME2 Species name"]
+    
+    driver = webdriver.Firefox()
+    driver.get("https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi")
+    
+    page_loaded = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, "/html/head/meta[5]"))
+            )
+    done = page_loaded.get_attribute("content")
+        
+    for name in names:
+        
+        lst = []
+        
+        search = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "searchtxt"))
+) #search bar
+        search.send_keys(name)
+        search.send_keys(Keys.ENTER)
+
+        next = done
+        
+        driver.implicitly_wait(1)
+
+        while next == done:
+            if next != done:
+                break
+            else:
+                try:           
+                    page_loaded = driver.find_element_by_xpath("/html/head/meta[5]")
+                    next = page_loaded.get_attribute("content")
+                
+                except:
+                    pass
+
+        done = next
+        
+        try:
+            current_name = driver.find_element_by_xpath("/html/body/form/table/tbody/tr/td/fieldset/div/div/strong")
+            current_name = current_name.text
+    
+            try:
+                subnames = driver.find_elements_by_class_name('subname')
+                subnames = subnames[0].text
+                names = subnames.split("\n")
+                homosynonyms = []
+                
+                for name in names:
+                    name = re.sub("\"", "", name)
+                    name = re.sub("\'", "", name)
+                    groups = name.split(' ')
+                    name = ' '.join(groups[:2])
+                    homosynonyms.append(name)
+                    species = []
+                    
+            except:
+                pass
+            
+        except:
+            current_name = ""
+            homosynonyms = []
+            pass
+            
+        try:
+            species = driver.find_element_by_xpath("/html/body/form/ul/li/a/big/strong")
+            species = species.text
+                
+        except:
+            species = []
+            pass
+        
+        if homosynonyms == [] and current_name == "" and species == []:
+            continue
+            
+        if species != [] and species != name:
+            lst.append(species)
+            
+        if current_name != "" and current_name != name:
+            lst.append(current_name) 
+            
+        if homosynonyms != []:
+            for synonym in homosynonyms:
+                if synonym != name:
+                    lst.append(synonym)
+        
+        empty = []
+            
+        for item in lst:
+            if (str(item) in agora2) == True:
+                empty.append(0)
+                print(name + ': ' + item)
+    
+    if len(empty) == 0:
+        print("No homosynoymns found in AGORA")
+        
+    driver.quit()    
+
+parser = argparse.ArgumentParser(prog='ant',formatter_class=argparse.RawDescriptionHelpFormatter)
+
+parser.add_argument('-a', type=str, required=True)
+
+args = parser.parse_args()
+
+find_agora_name('AGORA2_infoFile.xlsx', args.a)
